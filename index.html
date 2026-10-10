@@ -4,16 +4,19 @@
 <meta charset="UTF-8">
 <title>Загрузка</title>
 <style>
-  html, body { margin:0; height:100%; background:#000; overflow:hidden;
+  html, body { margin:0; padding:0; width:100%; height:100%; background:#000; overflow:hidden;
                font-family: Arial, sans-serif; color:#ddd; }
-  .slide { position:absolute; inset:0; opacity:0; transition: opacity 2s ease-in-out; overflow:hidden; }
+  .slide { position:absolute; top:0; left:0; right:0; bottom:0; width:100%; height:100%;
+           opacity:0; transition: opacity 2s ease-in-out; overflow:hidden; }
   .slide.active { opacity:1; }
-  .bg { position:absolute; inset:-30px; background-size:cover; background-position:center;
-        filter: blur(25px) brightness(0.5); }
-  .fg { position:absolute; inset:0; background-size:contain; background-position:center;
-        background-repeat:no-repeat; }
-  .shade { position:absolute; inset:0;
-           background: linear-gradient(transparent 55%, rgba(0,0,0,.85)); }
+  .bg { position:absolute; top:-30px; left:-30px; right:-30px; bottom:-30px;
+        background-size:cover; background-position:center;
+        -webkit-filter: blur(25px) brightness(0.5); filter: blur(25px) brightness(0.5); }
+  .fg { position:absolute; top:0; left:0; right:0; bottom:0;
+        background-size:contain; background-position:center; background-repeat:no-repeat; }
+  .shade { position:absolute; top:0; left:0; right:0; bottom:0;
+           background: -webkit-linear-gradient(top, rgba(0,0,0,0) 55%, rgba(0,0,0,.85));
+           background: linear-gradient(to bottom, rgba(0,0,0,0) 55%, rgba(0,0,0,.85)); }
   .info { position:absolute; left:40px; bottom:70px; }
   .info h1 { margin:0; font-size:42px; letter-spacing:2px; text-shadow:0 2px 8px #000; }
   .info p  { margin:6px 0 0; font-size:18px; color:#bbb; text-shadow:0 2px 8px #000; }
@@ -65,7 +68,8 @@
   }
 
   var box = document.getElementById("slides");
-  IMAGES.forEach(function (src) {
+  for (var i = 0; i < IMAGES.length; i++) {
+    var src = IMAGES[i];
     var d = document.createElement("div");
     d.className = "slide";
     var bg = document.createElement("div");
@@ -77,13 +81,13 @@
     d.appendChild(bg);
     d.appendChild(fg);
     box.appendChild(d);
-  });
+  }
   var slides = box.children, cur = 0;
-  slides[0].classList.add("active");
+  slides[0].className = "slide active";
   setInterval(function () {
-    slides[cur].classList.remove("active");
+    slides[cur].className = "slide";
     cur = (cur + 1) % slides.length;
-    slides[cur].classList.add("active");
+    slides[cur].className = "slide active";
   }, SLIDE_TIME);
 
   var music = new Audio();
@@ -96,6 +100,8 @@
     var p = music.play();
     if (p && p.then) {
       p.then(function () { started = true; }).catch(function () { started = false; });
+    } else {
+      started = true;
     }
   }
   music.onended = function () {
@@ -109,11 +115,17 @@
   playTrack();
 
   function startOnInteract() {
-    if (!started) { music.play().then(function () { started = true; }).catch(function () {}); }
+    if (!started) {
+      var p = music.play();
+      if (p && p.then) { p.then(function () { started = true; }).catch(function () {}); }
+    }
   }
   document.addEventListener("click", startOnInteract);
   document.addEventListener("keydown", startOnInteract);
-  document.addEventListener("touchstart", startOnInteract);
+  document.addEventListener("
+
+
+touchstart", startOnInteract);
 
   var muteBtn = document.getElementById("mute");
   muteBtn.onclick = function (e) {
@@ -127,9 +139,7 @@
   function GameDetails(servername, serverurl, mapname) {
     if (SERVER_NAME === "") {
       document.getElementById("name").textContent = servername;
-
-
-}
+    }
     document.getElementById("map").textContent = "Карта: " + mapname;
   }
   function SetFilesTotal(t) { total = t; }
