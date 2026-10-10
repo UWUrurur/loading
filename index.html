@@ -6,14 +6,17 @@
 <style>
   html, body { margin:0; height:100%; background:#000; overflow:hidden;
                font-family: Arial, sans-serif; color:#ddd; }
-  .slide { position:absolute; inset:0; background-size:cover; background-position:center;
-           opacity:0; transition: opacity 2s ease-in-out; }
+  .slide { position:absolute; inset:0; opacity:0; transition: opacity 2s ease-in-out; overflow:hidden; }
   .slide.active { opacity:1; }
+  .bg { position:absolute; inset:-30px; background-size:cover; background-position:center;
+        filter: blur(25px) brightness(0.5); }
+  .fg { position:absolute; inset:0; background-size:contain; background-position:center;
+        background-repeat:no-repeat; }
   .shade { position:absolute; inset:0;
-           background: linear-gradient(transparent 50%, rgba(0,0,0,.85)); }
+           background: linear-gradient(transparent 55%, rgba(0,0,0,.85)); }
   .info { position:absolute; left:40px; bottom:70px; }
-  .info h1 { margin:0; font-size:42px; letter-spacing:2px; }
-  .info p  { margin:6px 0 0; font-size:18px; color:#aaa; }
+  .info h1 { margin:0; font-size:42px; letter-spacing:2px; text-shadow:0 2px 8px #000; }
+  .info p  { margin:6px 0 0; font-size:18px; color:#bbb; text-shadow:0 2px 8px #000; }
   .bar { position:absolute; left:0; bottom:0; height:6px; width:0;
          background:#8b1a1a; transition: width .3s; }
   #status { position:absolute; right:40px; bottom:25px; font-size:14px; color:#999; }
@@ -27,7 +30,7 @@
 <div class="shade"></div>
 
 <div class="info">
-  <h1 id="name">НАЗВАНИЕ СЕРВЕРА</h1>
+  <h1 id="name">SERVER</h1>
   <p id="map"></p>
 </div>
 <div id="status">Подключение...</div>
@@ -35,6 +38,8 @@
 <div id="mute">Звук: вкл</div>
 
 <script>
+  var SERVER_NAME = "";
+
   var IMAGES = [
     "img1.jpg",
     "img2.jpg",
@@ -55,11 +60,22 @@
   var SHUFFLE = false;
   var VOLUME = 0.3;
 
+  if (SERVER_NAME !== "") {
+    document.getElementById("name").textContent = SERVER_NAME;
+  }
+
   var box = document.getElementById("slides");
   IMAGES.forEach(function (src) {
     var d = document.createElement("div");
     d.className = "slide";
-    d.style.backgroundImage = "url('" + src + "')";
+    var bg = document.createElement("div");
+    bg.className = "bg";
+    bg.style.backgroundImage = "url('" + src + "')";
+    var fg = document.createElement("div");
+    fg.className = "fg";
+    fg.style.backgroundImage = "url('" + src + "')";
+    d.appendChild(bg);
+    d.appendChild(fg);
     box.appendChild(d);
   });
   var slides = box.children, cur = 0;
@@ -73,10 +89,14 @@
   var music = new Audio();
   music.volume = VOLUME;
   var trackNum = SHUFFLE ? Math.floor(Math.random() * TRACKS.length) : 0;
+  var started = false;
 
   function playTrack() {
     music.src = TRACKS[trackNum];
-    music.play();
+    var p = music.play();
+    if (p && p.then) {
+      p.then(function () { started = true; }).catch(function () { started = false; });
+    }
   }
   music.onended = function () {
     if (SHUFFLE) {
@@ -88,15 +108,28 @@
   };
   playTrack();
 
+  function startOnInteract() {
+    if (!started) { music.play().then(function () { started = true; }).catch(function () {}); }
+  }
+  document.addEventListener("click", startOnInteract);
+  document.addEventListener("keydown", startOnInteract);
+  document.addEventListener("touchstart", startOnInteract);
+
   var muteBtn = document.getElementById("mute");
-  muteBtn.onclick = function () {
+  muteBtn.onclick = function (e) {
+    e.stopPropagation();
     music.muted = !music.muted;
     muteBtn.textContent = "Звук: " + (music.muted ? "выкл" : "вкл");
+    startOnInteract();
   };
 
   var total = 0;
   function GameDetails(servername, serverurl, mapname) {
-    document.getElementById("name").textContent = servername;
+    if (SERVER_NAME === "") {
+      document.getElementById("name").textContent = servername;
+
+
+}
     document.getElementById("map").textContent = "Карта: " + mapname;
   }
   function SetFilesTotal(t) { total = t; }
