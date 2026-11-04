@@ -23,8 +23,19 @@
   .bar { position:absolute; left:0; bottom:0; height:6px; width:0;
          background:#8b1a1a; transition: width .3s; }
   #status { position:absolute; right:40px; bottom:25px; font-size:14px; color:#999; }
-  #mute { position:absolute; top:20px; right:20px; padding:8px 14px; cursor:pointer;
-          background:rgba(0,0,0,.5); border:1px solid #555; color:#ccc; }
+  #sound-controls { position:absolute; top:18px; right:18px; z-index:2147483647;
+          width:270px; padding:12px 14px; box-sizing:border-box; pointer-events:auto !important;
+          background:rgba(5,9,16,.88); border:1px solid rgba(255,255,255,.28);
+          border-radius:8px; box-shadow:0 8px 28px rgba(0,0,0,.5); }
+  #sound-top { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  #mute { min-width:112px; padding:8px 12px; cursor:pointer !important; pointer-events:auto !important;
+          background:#17324f; border:1px solid #537aa5; border-radius:6px; color:#f1f6fc;
+          font:bold 13px Arial, sans-serif; }
+  #mute:hover, #mute:focus { background:#24527e; outline:1px solid #85b9e8; }
+  #volume-text { color:#dbe8f5; font-size:13px; white-space:nowrap; }
+  #volume { display:block; width:100%; height:24px; margin:8px 0 2px;
+          cursor:pointer !important; pointer-events:auto !important; -webkit-appearance:auto; }
+  #sound-hint { color:#8ea2b6; font-size:11px; text-align:center; }
 </style>
 </head>
 <body>
@@ -38,7 +49,14 @@
 </div>
 <div id="status">Подключение...</div>
 <div class="bar" id="bar"></div>
-<div id="mute">Звук: вкл</div>
+<div id="sound-controls">
+  <div id="sound-top">
+    <button type="button" id="mute">Звук: вкл</button>
+    <span id="volume-text">Громкость: 10%</span>
+  </div>
+  <input id="volume" type="range" min="0" max="100" step="1" value="10" aria-label="Громкость музыки">
+  <div id="sound-hint">M — вкл/выкл · ↑/↓ — громкость</div>
+</div>
 
 <script>
   var SERVER_NAME = "";
@@ -68,7 +86,7 @@
     "music4.mp3"
   ];
   var SHUFFLE = true;
-  var VOLUME = 0.3;
+  var DEFAULT_VOLUME = 0.10;
 
   if (SERVER_NAME !== "") {
     document.getElementById("name").textContent = SERVER_NAME;
@@ -97,19 +115,35 @@
     slides[cur].className = "slide active";
   }, SLIDE_TIME);
 
+  function readNumber(key, fallback) {
+    try {
+      var value = parseFloat(localStorage.getItem(key));
+      return isFinite(value) ? value : fallback;
+    } catch (error) { return fallback; }
+  }
+  function readMuted() {
+    try { return localStorage.getItem("hasslostan_loading_muted") === "1"; }
+    catch (error) { return false; }
+  }
+  function saveSetting(key, value) {
+    try { localStorage.setItem(key, String(value)); } catch (error) {}
+  }
+
   var music = new Audio();
-  music.volume = VOLUME;
+  music.preload = "auto";
+  music.volume = Math.max(0, Math.min(1, readNumber("hasslostan_loading_volume", DEFAULT_VOLUME)));
+  music.muted = readMuted();
   var trackNum = SHUFFLE ? Math.floor(Math.random() * TRACKS.length) : 0;
   var started = false;
 
   function playTrack() {
     music.src = TRACKS[trackNum];
-    var p = music.play();
-    if (p && p.then) {
-      p.then(function () { started = true; }).catch(function () { started = false; });
-    } else {
-      started = true;
-    }
+    try {
+      var p = music.play();
+      if (p && p.then) {
+        p.then(function () { started = true; }).catch(function () { started = false; });
+      } else { started = true; }
+    } catch (error) { started = false; }
   }
   music.onended = function () {
     if (SHUFFLE) {
@@ -123,24 +157,78 @@
 
   function startOnInteract() {
     if (!started) {
-      var p = music.play();
-      if (p && p.then) { p.then(function () { started = true; }).catch(function () {}); }
+      try {
+        var p = music.play();
+        if (p && p.then) { p.then(function () { started = true; }).catch(function () {}); }
+      } catch (error) {}
     }
   }
   document.addEventListener("click", startOnInteract);
   document.addEventListener("keydown", startOnInteract);
-  document.
-
-
-addEventListener("touchstart", startOnInteract);
+  document.addEventListener("touchstart", startOnInteract);
 
   var muteBtn = document.getElementById("mute");
-  muteBtn.onclick = function (e) {
-    e.stopPropagation();
-    music.muted = !music.muted;
-    muteBtn.textContent = "Звук: " + (music.muted ? "выкл" : "вкл");
+  var volumeSlider = document.getElementById("volume");
+  var volumeText = document.getElementById("volume-text");
+
+  function updateSoundUI() {
+    var percent = Math.round(music.volume * 100);
+    volumeSlider.value = String(percent);
+    volumeText.textContent = "Громкость: " + percent + "%";
+    muteBtn.textContent = "Звук: " + (music.muted || percent === 0 ? "выкл" : "вкл");
+  }
+  function setVolume(value) {
+    var percent = Math.max(0, Math.min(100, parseInt(value, 10) || 0));
+    music.volume = percent / 100;
+    if (percent > 0) music.muted = false;
+    saveSetting("hasslostan_loading_volume", music.volume);
+    saveSetting("hasslostan_loading_muted", music.muted ? "1" : "0");
+    updateSoundUI();
     startOnInteract();
-  };
+  }
+  function toggleMute(e) {
+    if (e) {
+      if (e.preventDefault) e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+    }
+    music.muted = !music.muted;
+    saveSetting("hasslostan_loading_muted", music.muted ? "1" : "0");
+    updateSoundUI();
+    startOnInteract();
+    return false;
+  }
+
+  var lastPointerToggle = 0;
+  muteBtn.addEventListener("mousedown", function (e) {
+    lastPointerToggle = new Date().getTime();
+    toggleMute(e);
+  });
+  muteBtn.addEventListener("touchstart", function (e) {
+    lastPointerToggle = new Date().getTime();
+    toggleMute(e);
+  });
+  muteBtn.addEventListener("click", function (e) {
+    if (new Date().getTime() - lastPointerToggle < 500) {
+      if (e.preventDefault) e.preventDefault();
+      return false;
+    }
+    return toggleMute(e);
+  });
+  volumeSlider.addEventListener("input", function () { setVolume(volumeSlider.value); });
+  volumeSlider.addEventListener("change", function () { setVolume(volumeSlider.value); });
+
+  document.addEventListener("keydown", function (e) {
+    var key = e.key || e.keyCode;
+    if (key === "m" || key === "M" || key === 77) {
+      toggleMute(e);
+    } else if (key === "ArrowUp" || key === 38) {
+      setVolume(Math.round(music.volume * 100) + 5);
+    } else if (key === "ArrowDown" || key === 40) {
+      setVolume(Math.round(music.volume * 100) - 5);
+    }
+  });
+
+  updateSoundUI();
 
   var total = 0;
   function GameDetails(servername, serverurl, mapname) {
