@@ -231,11 +231,22 @@
   updateSoundUI();
 
   var total = 0;
-  function GameDetails(servername, serverurl, mapname) {
+  function GameDetails(servername, serverurl, mapname, maxplayers, steamid, gamemode, volume, language) {
     if (SERVER_NAME === "") {
       document.getElementById("name").textContent = servername;
     }
     document.getElementById("map").textContent = "Карта: " + mapname;
+
+    // Garry's Mod passes the player's snd_musicvolume setting here.
+    // Respect it, but never let the loading screen exceed our quiet 10% cap.
+    var gameMusicVolume = parseFloat(volume);
+    if (isFinite(gameMusicVolume)) {
+      music.volume = Math.min(DEFAULT_VOLUME, Math.max(0, gameMusicVolume));
+      music.muted = gameMusicVolume <= 0;
+      updateSoundUI();
+      document.getElementById("sound-hint").textContent =
+        "Громкость берётся из настроек музыки Garry's Mod";
+    }
   }
   function SetFilesTotal(t) { total = t; }
   function SetFilesNeeded(n) {
