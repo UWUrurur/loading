@@ -23,7 +23,7 @@
   .bar { position:absolute; left:0; bottom:0; height:6px; width:0;
          background:#8b1a1a; transition: width .3s; }
   #status { position:absolute; right:40px; bottom:25px; font-size:14px; color:#999; }
-  #sound-controls { position:absolute; top:18px; right:18px; z-index:2147483647;
+  #sound-controls { display:none !important; position:absolute; top:18px; right:18px; z-index:2147483647;
           width:270px; padding:12px 14px; box-sizing:border-box; pointer-events:auto !important;
           background:rgba(5,9,16,.88); border:1px solid rgba(255,255,255,.28);
           border-radius:8px; box-shadow:0 8px 28px rgba(0,0,0,.5); }
@@ -86,7 +86,7 @@
     "music4.mp3"
   ];
   var SHUFFLE = true;
-  var DEFAULT_VOLUME = 0.10;
+  var DEFAULT_VOLUME = 0.04;
 
   if (SERVER_NAME !== "") {
     document.getElementById("name").textContent = SERVER_NAME;
@@ -238,7 +238,7 @@
     document.getElementById("map").textContent = "Карта: " + mapname;
 
     // Garry's Mod passes the player's snd_musicvolume setting here.
-    // Respect it, but never let the loading screen exceed our quiet 10% cap.
+    // Respect it, but never let the loading screen exceed our quiet 4% cap.
     var gameMusicVolume = parseFloat(volume);
     if (isFinite(gameMusicVolume)) {
       music.volume = Math.min(DEFAULT_VOLUME, Math.max(0, gameMusicVolume));
